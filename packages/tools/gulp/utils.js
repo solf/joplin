@@ -165,7 +165,8 @@ utils.copyFile = async function(src, dest) {
 };
 
 utils.rootDir = function() {
-	return utils.dirname(utils.dirname(utils.dirname(__dirname)));
+    const realDir = require('fs').realpathSync.native(__dirname);
+    return utils.dirname(utils.dirname(utils.dirname(realDir)));
 };
 
 utils.registerGulpTasks = function(gulp, tasks) {

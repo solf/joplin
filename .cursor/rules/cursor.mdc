@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+
+# Main Rules
+- DO NOT EVER run build commands (yarn, npm, etc.) yourself UNLESS CLEARLY EXPLICITLY INSTRUCTED TO. This is because the commands are normally run in a sandbox by user.
+- Project is typically built in Sandboxie sandbox (`JoplinSourceDev`), so file references like "logs can be found here: D:\TEMP\xfs-63dd4047\build.log" are most likely here: e:\Sandboxie\Solf\JoplinSourceDev\drive\D\TEMP\xfs-63dd4047\build.log
+- Sandboxie note: real-filesystem paths (e.g. `e:\jps\`) must use "Open for All" access in sandbox config. If builds fail (e.g. "The current directory is invalid."), first check whether files are being created inside the sandbox layer (`e:\Sandboxie\Solf\JoplinSourceDev\drive\...`) instead of on the real filesystem.
+- Generate comprehensible code, not convoluted
+- Do not rewrite code that doesn't need rewriting
+- **Three-letter TODO tags** (`qqq`, `zzz`, `fff`, `ddd`, `aaa`, etc.) are task markers. You may act on them when relevant. When you do: (1) add a `// rrr` comment **above** the original tag line explaining what you did and why; (2) keep the original tag text intact. Both `rrr` and the original tag are removed by the author during review.
+- Do not convert leading tabs to spaces or the other way around (preserve existing)
+- **Line endings**: new files use **LF** (unix). Existing files retain their current line endings to avoid massive diffs.
+- Specs files and rule files are supposed to be terse and information-dense; important data should not be obscured by verbose syntax/formatting.
+
+# Code Quality
+
+## Fragile Decisions
+- **Flag fragile decisions at two levels**:
+  - *Design level* (architecture, approach): stop and ask the user **before writing code**. Prefer the robust solution unless the user explicitly opts for the shortcut.
+  - *Implementation level* (code-level choices not covered by prior discussion): write the code but add `// rrr <explanation>` at the dubious spot so it surfaces during review. Examples: implicit ordering assumptions, edge cases handled with a heuristic, fallback values chosen without spec backing.
+
+# Overview
+
+This is Joplin note management app.
+

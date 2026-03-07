@@ -1902,3 +1902,7 @@ packages/tools/website/utils/render.js
 packages/tools/website/utils/types.js
 # AUTO-GENERATED - EXCLUDED TYPESCRIPT BUILD
 
+# Exclude basic Eclipse files.
+**/.project
+**/.classpath
+**/.settings/
