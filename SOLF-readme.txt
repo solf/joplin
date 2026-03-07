@@ -32,3 +32,8 @@ yarn install
 
 ~~~~~~~~~~~
 
+
+To try running Joplin app:
+
+cd packages\app-desktop
+yarn start
