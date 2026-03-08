@@ -502,6 +502,16 @@ export default class SearchEngine {
 			}
 		}
 
+		const sortByUpdateTime = true;
+		console.warn('SOLF processResults_ called, rows:', rows.length, 'sortByUpdateTime:', sortByUpdateTime);
+		if (sortByUpdateTime) {
+			rows.sort((a, b) => {
+				if (a.user_updated_time < b.user_updated_time) return +1;
+				if (a.user_updated_time > b.user_updated_time) return -1;
+				return 0;
+			});
+			console.warn('SOLF sorted results:', rows.map(r => ({ title: r.title, updated: r.user_updated_time })));
+		} else {
 		rows.sort((a, b) => {
 			const aIsNote = a.item_type === ModelType.Note;
 			const bIsNote = b.item_type === ModelType.Note;
@@ -520,6 +530,7 @@ export default class SearchEngine {
 			if (a.user_updated_time > b.user_updated_time) return -1;
 			return 0;
 		});
+		}
 	}
 
 	// https://stackoverflow.com/a/13818704/561309
@@ -775,6 +786,7 @@ export default class SearchEngine {
 		};
 
 		const searchType = this.determineSearchType_(searchString, options.searchType);
+		console.warn('SOLF search() called, searchString:', searchString, 'searchType:', searchType);
 		const parsedQuery = await this.parseQuery(searchString);
 
 		let rows: ProcessResultsRow[] = [];
@@ -870,14 +882,18 @@ export default class SearchEngine {
 				}
 
 				this.processResults_(rows as ProcessResultsRow[], parsedQuery, !useFts);
-			} catch (error) {
-				this.logger().warn(`Cannot execute MATCH query: ${searchString}: ${error.message}`);
-				rows = [];
-			}
+		} catch (error) {
+			console.warn('SOLF FTS error caught:', error.message);
+			this.logger().warn(`Cannot execute MATCH query: ${searchString}: ${error.message}`);
+			rows = [];
 		}
+	}
 
+		console.warn('SOLF after processResults_, rows.length:', rows.length, 'titles:', rows.map(r => r.title));
 		if (!rows.length) {
+			console.warn('SOLF falling back to searchFromItemIds');
 			rows = await this.searchFromItemIds(searchString);
+			console.warn('SOLF searchFromItemIds returned:', rows.length);
 		}
 
 		return rows;
