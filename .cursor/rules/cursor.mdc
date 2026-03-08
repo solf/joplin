@@ -20,6 +20,32 @@ alwaysApply: true
   - *Design level* (architecture, approach): stop and ask the user **before writing code**. Prefer the robust solution unless the user explicitly opts for the shortcut.
   - *Implementation level* (code-level choices not covered by prior discussion): write the code but add `// rrr <explanation>` at the dubious spot so it surfaces during review. Examples: implicit ordering assumptions, edge cases handled with a heuristic, fallback values chosen without spec backing.
 
+# Code Change Guidelines
+- Minimize diff from upstream for easier re-patching on version upgrades. Do not refactor original code structure when adding functionality.
+
+# Dev Workflow
+- `yarn start` does NOT compile TypeScript -- it only bundles existing `.js` via esbuild.
+- To see `.ts` changes: `yarn workspace @joplin/lib run tsc && yarn start` (from `packages/app-desktop`).
+- For continuous dev: `yarn watch` in a separate terminal recompiles on change.
+
+# Build Architecture
+- Two bundles produced by esbuild (`packages/app-desktop/tools/bundleJs.ts`):
+  - `main.bundle.js` -- Electron main process
+  - `main-html.bundle.js` -- renderer/UI (search, note list, etc.)
+- esbuild bundles `.js` not `.ts` (`prefer-js-imports` plugin). `tsc` must run first.
+
+# Patching Real Joplin Install
+- Patch both bundles into `app.asar` via 7z (run from `packages\app-desktop\`):
+  `set ASAR_TARGET=e:\j_p\current\APP\resources\app.asar`
+  `pushd e:\jps\joplin\packages\app-desktop\`
+  `7z.exe a -tasar -i!main.bundle.js -ad -slp- -- "%ASAR_TARGET%"`
+  `7z.exe a -tasar -i!main-html.bundle.js -ad -slp- -- "%ASAR_TARGET%"`
+  WARNING: `-i!` path matches both outside and inside archive, must run from dir where paths match.
+- Dev tools in real install: Help > Toggle Development Tools.
+
+# Known Bugs (upstream)
+- OCR overwrites `resource.user_updated_time` via `autoTimestamp` in `Resource.save()` (`OcrService.ts:175`). Also `SearchEngine.syncTables_()` stores `resource.updated_time` (system time) into `items_normalized.user_updated_time` instead of `resource.user_updated_time`.
+
 # Overview
 
 This is Joplin note management app.
