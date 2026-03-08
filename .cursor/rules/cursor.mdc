@@ -43,6 +43,14 @@ alwaysApply: true
   WARNING: `-i!` path matches both outside and inside archive, must run from dir where paths match.
 - Dev tools in real install: Help > Toggle Development Tools.
 
+# Settings & Search Architecture
+- Setting definitions live in `packages/lib/models/settings/builtInMetadata.ts` (not `Setting.ts` itself). `Setting.ts` only has migration/wasGlobal metadata.
+- Settings with `public: true` appear automatically in Joplin's settings UI panel under their `section` (e.g. `'note'`).
+- Middleware in `BaseApplication.ts:504` auto-refreshes note list when any setting key starting with `notes.sortOrder` changes. It does NOT watch `search.sortOrder` -- search results re-fetch on every new search, so a custom `search.*` setting takes effect on next search without middleware changes. To force immediate refresh when setting changes mid-search, add a check in that same middleware block.
+- `SearchEngineUtils.notesForQuery()` is the single callsite for desktop search results (`BaseApplication.ts:256`). It calls `SearchEngine.search()` for FTS results, then `Note.previews()` to get fresh note data. Our custom sort is appended after the original relevance-order loop.
+- `Note.previewFields()` already includes `user_updated_time`, `user_created_time`, `title`, `order`, `todo_due`, `todo_completed` -- so sorting by any of these requires no extra DB fields.
+- `Note.fieldToLabel()` maps field names to UI labels (`title`, `user_updated_time`, etc.). PR #7622 added `bm25` for relevance but upstream didn't merge it; we use `'relevance'` as a synthetic option key instead.
+
 # Known Bugs (upstream)
 - OCR overwrites `resource.user_updated_time` via `autoTimestamp` in `Resource.save()` (`OcrService.ts:175`). Also `SearchEngine.syncTables_()` stores `resource.updated_time` (system time) into `items_normalized.user_updated_time` instead of `resource.user_updated_time`.
 
