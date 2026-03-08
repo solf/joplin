@@ -53,6 +53,8 @@ alwaysApply: true
 
 # Known Bugs (upstream)
 - OCR overwrites `resource.user_updated_time` via `autoTimestamp` in `Resource.save()` (`OcrService.ts:175`). Also `SearchEngine.syncTables_()` stores `resource.updated_time` (system time) into `items_normalized.user_updated_time` instead of `resource.user_updated_time`.
+- `BaseModel.save()` with default `autoTimestamp: true` unconditionally sets `user_updated_time = now`. Desktop editor saves (`useScheduleSaveCallbacks.ts`) use default autoTimestamp, so any spurious save (TinyMCE change events without actual content change, key events during navigation, HTML normalization) corrupts `user_updated_time`. Fixed locally with no-op save guard comparing all `formNoteToNote` fields before calling `Note.save()`.
+- `Note.updateGeolocation()` uses default autoTimestamp, overwriting `user_updated_time` when adding lat/long to provisional notes.
 
 # Overview
 

@@ -26,6 +26,29 @@ const useScheduleSaveCallbacks = (props: Props) => {
 		const makeAction = (formNote: FormNote) => {
 			return async function() {
 				const note = await formNoteToNote(formNote);
+
+				// SOLF: Skip no-op saves to prevent spurious user_updated_time changes.
+				// TinyMCE can fire change events without actual content modifications
+				// (key events during navigation, HTML normalization, image layout, etc.)
+				// which would otherwise overwrite user_updated_time via autoTimestamp.
+				const existingNote = await Note.load(note.id);
+				if (existingNote
+					&& existingNote.title === note.title
+					&& existingNote.body === note.body
+					&& existingNote.parent_id === note.parent_id
+					&& existingNote.deleted_time === note.deleted_time
+					&& existingNote.is_conflict === note.is_conflict) {
+					logger.debug('Skipping no-op save for note', note.id);
+					props.setFormNote.current((prev: FormNote) => {
+						return { ...prev, hasChanged: false };
+					});
+					props.dispatch({
+						type: 'EDITOR_NOTE_STATUS_REMOVE',
+						id: formNote.id,
+					});
+					return;
+				}
+
 				logger.debug('Saving note...', note);
 				const savedNote = await Note.save(note, { changeId: `editorChange-${props.editorId}` });
 
