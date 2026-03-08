@@ -79,14 +79,30 @@ export default class SearchEngineUtils {
 			if (isTodoAutoAdded) delete sortedNotes[idx].is_todo;
 		}
 
-		// SOLF: Sort by note's user_updated_time (descending) using fresh DB data.
+		// SOLF: Configurable search sort order using fresh DB data.
 		// Overrides FTS relevance order because FTS timestamps can be stale/wrong
 		// (e.g. OCR overwrites resource timestamps, see items_fts indexing).
-		sortedNotes.sort((a, b) => {
-			if (a.user_updated_time < b.user_updated_time) return +1;
-			if (a.user_updated_time > b.user_updated_time) return -1;
-			return 0;
-		});
+		let searchSortField = Setting.value('search.sortOrder.field');
+		let searchSortReverse = Setting.value('search.sortOrder.reverse');
+		if (searchSortField === 'notes') {
+			searchSortField = Setting.value('notes.sortOrder.field');
+			searchSortReverse = Setting.value('notes.sortOrder.reverse');
+			if (searchSortField === 'order') searchSortField = 'relevance';
+		}
+		if (searchSortField && searchSortField !== 'relevance') {
+			if (searchSortField === 'title') {
+				const dir = searchSortReverse ? -1 : 1;
+				sortedNotes.sort((a, b) => dir * (a.title || '').localeCompare(b.title || ''));
+			} else {
+				const dir = searchSortReverse ? 1 : -1;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic field access
+				sortedNotes.sort((a: any, b: any) => {
+					if (a[searchSortField] < b[searchSortField]) return dir;
+					if (a[searchSortField] > b[searchSortField]) return -dir;
+					return 0;
+				});
+			}
+		}
 
 		// Note that when the search engine index is somehow corrupted, it might
 		// contain references to notes that don't exist. Not clear how it can

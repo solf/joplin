@@ -734,6 +734,39 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 			storage: SettingStorage.File,
 			isGlobal: false,
 		},
+		'search.sortOrder.field': {
+			value: 'notes',
+			type: SettingItemType.String,
+			section: 'note',
+			isEnum: true,
+			public: true,
+			appTypes: [AppType.Cli, AppType.Desktop],
+			label: () => _('Sort search results by'),
+			options: () => {
+				const Note = require('../Note').default;
+				const fields = ['user_updated_time', 'user_created_time', 'title'];
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+				const options: any = {};
+				options['notes'] = _('Same as notes');
+				options['relevance'] = toTitleCase(_('relevance'));
+				for (let i = 0; i < fields.length; i++) {
+					options[fields[i]] = toTitleCase(Note.fieldToLabel(fields[i]));
+				}
+				return options;
+			},
+			storage: SettingStorage.File,
+			isGlobal: true,
+		},
+		'search.sortOrder.reverse': {
+			value: false,
+			type: SettingItemType.Bool,
+			storage: SettingStorage.File,
+			isGlobal: true,
+			section: 'note',
+			public: true,
+			label: () => _('Reverse search sort order'),
+			appTypes: [AppType.Cli, AppType.Desktop],
+		},
 		'editor.autoMatchingBraces': {
 			value: true,
 			type: SettingItemType.Bool,
