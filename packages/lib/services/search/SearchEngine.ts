@@ -314,7 +314,7 @@ export default class SearchEngine {
 							ModelType.Resource,
 							this.normalizeText_(resource.title),
 							this.normalizeText_(resource.ocr_text),
-							resource.updated_time,
+							resource.user_updated_time, // SOLF: was resource.updated_time (system time, corrupted by OCR)
 						],
 					});
 

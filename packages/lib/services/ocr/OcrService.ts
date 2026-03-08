@@ -172,7 +172,9 @@ export default class OcrService {
 					toSave.ocr_error = errorMessage || 'Unknown error';
 				}
 
-				await Resource.save(toSave);
+				// SOLF: OCR is a system operation -- preserve user_updated_time.
+				toSave.updated_time = Date.now();
+				await Resource.save(toSave, { autoTimestamp: false });
 			};
 		};
 
