@@ -79,6 +79,15 @@ export default class SearchEngineUtils {
 			if (isTodoAutoAdded) delete sortedNotes[idx].is_todo;
 		}
 
+		// SOLF: Sort by note's user_updated_time (descending) using fresh DB data.
+		// Overrides FTS relevance order because FTS timestamps can be stale/wrong
+		// (e.g. OCR overwrites resource timestamps, see items_fts indexing).
+		sortedNotes.sort((a, b) => {
+			if (a.user_updated_time < b.user_updated_time) return +1;
+			if (a.user_updated_time > b.user_updated_time) return -1;
+			return 0;
+		});
+
 		// Note that when the search engine index is somehow corrupted, it might
 		// contain references to notes that don't exist. Not clear how it can
 		// happen, but anyway handle it here. Was causing this issue:
