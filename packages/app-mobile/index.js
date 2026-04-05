@@ -8,8 +8,14 @@
 
 import './utils/polyfills';
 
-import { LogBox } from 'react-native';
+import { AppRegistry, LogBox } from 'react-native';
 import { registerRootComponent } from 'expo';
+
+// Keep-alive handler for background sync. The native side starts this HeadlessJsTask
+// to prevent RN's JavaTimerManager from pausing all JS timers when the app backgrounds.
+AppRegistry.registerHeadlessTask('JoplinBackgroundSync', () => async () => {
+	return new Promise(() => {});
+});
 // Allows loading image assets. See https://github.com/expo/expo/issues/31240
 import 'expo-asset';
 import shim from '@joplin/lib/shim';

@@ -338,11 +338,14 @@ export default class RevisionService extends BaseService {
 		}
 	}
 
+	private collectRevisionInterval_: number = null;
+
 	public runInBackground(collectRevisionInterval: number = null) {
 		if (this.isRunningInBackground_) return;
 		this.isRunningInBackground_ = true;
 
 		if (collectRevisionInterval === null) collectRevisionInterval = 1000 * 60 * 10;
+		this.collectRevisionInterval_ = collectRevisionInterval;
 
 		logger.info(`runInBackground: Starting background service with revision collection interval ${collectRevisionInterval}`);
 
@@ -353,6 +356,23 @@ export default class RevisionService extends BaseService {
 		this.maintenanceTimer2_ = shim.setInterval(() => {
 			void this.maintenance();
 		}, collectRevisionInterval);
+	}
+
+	public pauseBackgroundTimer() {
+		if (this.maintenanceTimer2_) {
+			shim.clearInterval(this.maintenanceTimer2_);
+			this.maintenanceTimer2_ = null;
+			logger.info('pauseBackgroundTimer: Paused recurring maintenance timer');
+		}
+	}
+
+	public resumeBackgroundTimer() {
+		if (!this.isRunningInBackground_ || this.maintenanceTimer2_) return;
+		const interval = this.collectRevisionInterval_ || 1000 * 60 * 10;
+		this.maintenanceTimer2_ = shim.setInterval(() => {
+			void this.maintenance();
+		}, interval);
+		logger.info(`resumeBackgroundTimer: Resumed recurring maintenance timer (${interval}ms)`);
 	}
 
 	public async cancelTimers() {

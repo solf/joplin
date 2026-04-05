@@ -13,6 +13,7 @@ import Logger from '@joplin/utils/Logger';
 import NoteScreen from './components/screens/Note/Note';
 import UpgradeSyncTargetScreen from './components/screens/UpgradeSyncTargetScreen';
 import Setting, { } from '@joplin/lib/models/Setting';
+import RevisionService from '@joplin/lib/services/RevisionService';
 import PoorManIntervals from '@joplin/lib/PoorManIntervals';
 import { NotesParent, serializeNotesParent } from '@joplin/lib/reducer';
 import ShareExtension, { UnsubscribeShareListener } from './utils/ShareExtension';
@@ -22,7 +23,7 @@ import SyncTargetJoplinServer from '@joplin/lib/SyncTargetJoplinServer';
 import SyncTargetJoplinCloud from '@joplin/lib/SyncTargetJoplinCloud';
 import SyncTargetOneDrive from '@joplin/lib/SyncTargetOneDrive';
 import { Keyboard, BackHandler, Animated, StatusBar, Platform, Dimensions } from 'react-native';
-import { AppState as RNAppState, EmitterSubscription, View, Text, Linking, NativeEventSubscription, Appearance, ActivityIndicator } from 'react-native';
+import { AppState as RNAppState, AppStateStatus, EmitterSubscription, NativeModules, View, Text, Linking, NativeEventSubscription, Appearance, ActivityIndicator } from 'react-native';
 import getResponsiveValue from './components/getResponsiveValue';
 import NetInfo, { NetInfoSubscription } from '@react-native-community/netinfo';
 const DropdownAlert = require('react-native-dropdownalert').default;
@@ -112,6 +113,8 @@ import SyncWizard from './components/SyncWizard/SyncWizard';
 const logger = Logger.create('root');
 const perfLogger = PerformanceLogger.create();
 
+let bgSyncActive = false;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 let storeDispatch: any = function(_action: any) {};
 
@@ -164,6 +167,13 @@ const generalMiddleware = (store: any) => (next: any) => async (action: any) => 
 
 	if (action.type === 'SETTING_UPDATE_ONE' && action.key === 'sync.interval' || action.type === 'SETTING_UPDATE_ALL') {
 		reg.setupRecurrentSync();
+		if (Platform.OS === 'android') {
+			if (Setting.value('sync.interval') > 0) {
+				try { NativeModules.BackgroundSyncModule?.startService(); } catch (e) { logger.warn('BackgroundSync startService:', e); }
+			} else {
+				try { NativeModules.BackgroundSyncModule?.stopService(); } catch (e) { logger.warn('BackgroundSync stopService:', e); }
+			}
+		}
 	}
 
 	if ((action.type === 'SETTING_UPDATE_ONE' && (action.key === 'dateFormat' || action.key === 'timeFormat')) || (action.type === 'SETTING_UPDATE_ALL')) {
@@ -225,6 +235,18 @@ const generalMiddleware = (store: any) => (next: any) => async (action: any) => 
 
 	if (action.type === 'SYNC_CREATED_OR_UPDATED_RESOURCE') {
 		void ResourceFetcher.instance().autoAddResources();
+	}
+
+	if (Platform.OS === 'android') {
+		const shouldBeActive = newState.syncStarted || newState.decryptionWorker.state === 'started';
+		if (shouldBeActive !== bgSyncActive) {
+			bgSyncActive = shouldBeActive;
+			if (shouldBeActive) {
+				try { NativeModules.BackgroundSyncModule?.acquireWakeLock(); } catch (e) { logger.warn('BackgroundSync acquireWakeLock:', e); }
+			} else {
+				try { NativeModules.BackgroundSyncModule?.releaseWakeLock(); } catch (e) { logger.warn('BackgroundSync releaseWakeLock:', e); }
+			}
+		}
 	}
 
 	if (doRefreshFolders) {
@@ -293,7 +315,8 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 	private unsubscribeScreenWidthChangeHandler_: EmitterSubscription|undefined;
 	private unsubscribeNetInfoHandler_: NetInfoSubscription|undefined;
 	private unsubscribeNewShareListener_: UnsubscribeShareListener|undefined;
-	private onAppStateChange_: ()=> void;
+	private onAppStateChange_: (nextAppState: AppStateStatus)=> void;
+	private lastAppState_: AppStateStatus;
 	private backButtonHandler_: BackButtonHandler;
 	private handleNewShare_: ()=> void;
 	private handleOpenURL_: (event: unknown)=> void;
@@ -313,8 +336,22 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 			return this.backButtonHandler();
 		};
 
-		this.onAppStateChange_ = () => {
+		this.lastAppState_ = RNAppState.currentState;
+		this.onAppStateChange_ = (nextAppState: AppStateStatus) => {
 			PoorManIntervals.update();
+
+			if (Platform.OS === 'android') {
+				const wasForeground = this.lastAppState_ === 'active';
+				const isForeground = nextAppState === 'active';
+
+				if (wasForeground && !isForeground) {
+					RevisionService.instance().pauseBackgroundTimer();
+				} else if (!wasForeground && isForeground) {
+					RevisionService.instance().resumeBackgroundTimer();
+				}
+			}
+
+			this.lastAppState_ = nextAppState;
 		};
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -444,6 +481,10 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 				type: 'APP_STATE_SET',
 				state: 'ready',
 			});
+
+			if (Platform.OS === 'android' && Setting.value('sync.interval') > 0) {
+				try { NativeModules.BackgroundSyncModule?.startService(); } catch (e) { logger.warn('BackgroundSync startService:', e); }
+			}
 
 			// setTimeout(() => {
 			// 	this.props.dispatch({

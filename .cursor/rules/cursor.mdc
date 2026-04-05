@@ -56,6 +56,15 @@ alwaysApply: true
 - `BaseModel.save()` with default `autoTimestamp: true` unconditionally sets `user_updated_time = now`. Desktop editor saves (`useScheduleSaveCallbacks.ts`) use default autoTimestamp, so any spurious save (TinyMCE change events without actual content change, key events during navigation, HTML normalization) corrupts `user_updated_time`. Fixed locally with no-op save guard comparing all `formNoteToNote` fields before calling `Note.save()`.
 - `Note.updateGeolocation()` uses default autoTimestamp, overwriting `user_updated_time` when adding lat/long to provisional notes.
 
+# Android Background Sync
+- Foreground service (`BackgroundSyncService.kt`) with `FOREGROUND_SERVICE_SPECIAL_USE` keeps the app alive in background. Persistent notification (IMPORTANCE_MIN) shows "Syncing..." or "Keep-alive".
+- Service starts once on app init (`componentDidMount` in `root.tsx`), never stopped on foreground/background transitions.
+- Service also started/stopped when `sync.interval` setting changes (middleware in `root.tsx`).
+- `HeadlessJsTask` (`BackgroundSyncPackage.kt` + `index.js`) keeps RN's JS timer system alive in background. Without it, `JavaTimerManager.onHostPause()` pauses all JS `setTimeout`/`setInterval`, stalling sync and decryption.
+- Wakelock + notification driven by Redux middleware in `root.tsx`: `state.syncStarted || state.decryptionWorker.state === 'started'`. Uses same `syncStarted` flag that drives the Cancel button in UI. Decryption must also be protected -- it runs after `sync.start()` returns (when `syncStarted` is already false).
+- `acquireWakeLock()` / `releaseWakeLock()` in `BackgroundSyncPackage.kt` toggle both PARTIAL_WAKE_LOCK and notification text/icon via `BackgroundSyncService.updateNotification()`.
+- `RevisionService` paused on background, resumed on foreground (`onAppStateChange_` in `root.tsx`).
+
 # Overview
 
 This is Joplin note management app.
