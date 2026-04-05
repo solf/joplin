@@ -67,6 +67,11 @@ const config = {
 			},
 		}),
 	},
+	server: {
+		// Expo sets unstable_serverRoot to the monorepo root, which causes
+		// Metro to look for index.js there instead of in packages/app-mobile/.
+		unstable_serverRoot: path.resolve(__dirname),
+	},
 	resolver: {
 		assetExts: [
 			...defaultConfig.resolver.assetExts,
