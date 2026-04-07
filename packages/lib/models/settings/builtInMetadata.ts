@@ -1723,7 +1723,7 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 		'revisionService.enabled': { section: 'revisionService', storage: SettingStorage.File, value: true, type: SettingItemType.Bool, public: true, label: () => _('Enable note history') },
 		'revisionService.ttlDays': {
 			section: 'revisionService',
-			value: 90,
+			value: 9999,
 			type: SettingItemType.Int,
 			public: true,
 			minimum: 1,
