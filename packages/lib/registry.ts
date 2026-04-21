@@ -19,6 +19,7 @@ class Registry {
 	private scheduleSyncId_: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	private recurrentSyncId_: any;
+	private recurrentSyncLastTime_ = 0;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	private db_: any;
 	private isOnMobileData_ = false;
@@ -250,10 +251,22 @@ class Registry {
 					return;
 				}
 
+				// Use a 60-second native timer that checks wall-clock time instead of
+				// a single timer set to the full sync interval. On Android, native
+				// setInterval counts only CPU-awake time (uptimeMillis), so a 5-min
+				// interval can take much longer in real time when the phone sleeps
+				// intermittently. Polling every 60s with Date.now() ensures sync
+				// fires within ~60 awake-seconds of the real interval passing.
+				this.recurrentSyncLastTime_ = Date.now();
 				this.recurrentSyncId_ = shim.setInterval(() => {
-					this.logger().info('Running background sync on timer...');
-					void this.scheduleSync(0, null, true);
-				}, 1000 * Setting.value('sync.interval'));
+					const elapsed = Date.now() - this.recurrentSyncLastTime_;
+					const interval = 1000 * Setting.value('sync.interval');
+					if (elapsed >= interval) {
+						this.recurrentSyncLastTime_ = Date.now();
+						this.logger().info('Running background sync on timer...');
+						void this.scheduleSync(0, null, true);
+					}
+				}, 60 * 1000);
 			}
 		} finally {
 			this.setupRecurrentCalls_.pop();
